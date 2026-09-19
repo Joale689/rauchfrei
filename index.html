@@ -1,0 +1,762 @@
+﻿<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Rauchfrei</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+
+    .app {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin: 4px 0 18px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .date {
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    .counter {
+      font-size: 42px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    .label {
+      color: #cbd5e1;
+    }
+
+    .buttons {
+      display: grid;
+      gap: 12px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 64px;
+      border: 0;
+      border-radius: 14px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .cigarette {
+      background: #f59e0b;
+      color: #111827;
+    }
+
+    .first {
+      background: #ef4444;
+      color: white;
+    }
+
+    .vape {
+      background: #38bdf8;
+      color: #082f49;
+    }
+
+    .undo {
+      background: #334155;
+      color: #f8fafc;
+      min-height: 48px;
+      font-size: 15px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat {
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      margin-top: 3px;
+    }
+
+    .events {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .events li {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid #334155;
+      padding: 10px 0;
+    }
+
+    .events li:last-child {
+      border-bottom: 0;
+    }
+
+    .muted {
+      color: #94a3b8;
+    }
+
+    .empty {
+      color: #94a3b8;
+      padding: 10px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <h1>Rauchfrei</h1>
+    <div class="subtitle">Zigarette → Nikotin → Dampfer → 0</div>
+
+    <section class="card">
+      <div class="date" id="today"></div>
+      <div class="counter"><span id="cigCount">0</span> 🚬</div>
+      <div class="label">Zigaretten in deinem aktuellen Rauchtag</div>
+    </section>
+
+    <section class="card buttons">
+      <button class="first" id="firstBtn">
+        🚬 Erste Zigarette nach Schlaf
+      </button>
+
+      <button class="cigarette" id="cigBtn">
+        🚬 Zigarette
+      </button>
+
+      <button class="vape" id="vapeBtn">
+        💨 Dampfer
+      </button>
+
+      <button class="undo" id="undoBtn">
+        ↶ Letzten Eintrag rückgängig
+      </button>
+
+      <button class="undo" id="exportBtn">
+        ↓ Daten-Backup exportieren
+      </button>
+
+      <button class="undo" id="importBtn">
+        ↑ Backup importieren
+      </button>
+
+      <input id="importFile" type="file" accept=".json,application/json" style="display:none">
+
+      <button class="undo" id="resetBtn">
+        🗑 Testdaten löschen
+      </button>
+    </section>
+
+    <section class="card">
+      <div id="calibrationPanel" style="margin:0 0 16px 0;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,0.06);">
+        <div id="calibrationTitle" style="font-size:12px;font-weight:700;opacity:.75;margin-bottom:5px;">
+          KALIBRIERUNG NOCH NICHT GESTARTET
+        </div>
+        <div id="calibrationText" style="font-size:14px;line-height:1.4;">
+          Startet mit der ersten Zigarette nach dem Schlaf.
+        </div>
+      </div>
+
+      <div id="shiftPanel" style="
+      margin: 0 0 16px 0;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+    ">
+      <div style="font-size:12px; opacity:.65; margin-bottom:4px;">
+        PLANMÄSSIGE SCHICHT
+      </div>
+
+      <div id="shiftName" style="font-size:20px; font-weight:700;">
+        –
+      </div>
+
+      <div id="shiftTime" style="font-size:14px; opacity:.75; margin-top:3px;">
+        –
+      </div>
+
+      <div id="shiftTomorrow" style="font-size:12px; opacity:.55; margin-top:8px;">
+        –
+      </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat">
+          <span class="muted">Dampfer</span>
+          <strong id="vapeCount">0</strong>
+        </div>
+
+        <div class="stat">
+          <span class="muted">Seit letzter 🚬</span>
+          <strong id="sinceLast">–</strong>
+        </div>
+
+        <div class="stat">
+          <span class="muted">Ø Abstand 🚬</span>
+          <strong id="avgGap">–</strong>
+        </div>
+
+        <div class="stat">
+          <span class="muted">Rauchtag seit</span>
+          <strong id="dayStart">–</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <strong>Heutiger Verlauf</strong>
+      <ul class="events" id="eventList"></ul>
+    </section>
+  </main>
+
+<script>
+(() => {
+  "use strict";
+
+  const STORAGE_KEY = "rauchfrei_v1_events";
+
+  const $ = id => document.getElementById(id);
+
+  function loadEvents() {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveEvents(events) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  }
+
+  function addEvent(type) {
+    const events = loadEvents();
+
+    if (type === "first-cigarette") {
+      const smokingDay = getCurrentSmokingDay(events);
+
+      const alreadyMarked = smokingDay.events.some(
+        e => e.type === "first-cigarette"
+      );
+
+      if (alreadyMarked) {
+        alert(
+          "Die erste Zigarette nach dem Schlaf ist für diesen Rauchtag bereits markiert."
+        );
+        return;
+      }
+    }
+
+    events.push({
+      id: crypto.randomUUID
+        ? crypto.randomUUID()
+        : String(Date.now()) + Math.random(),
+      type,
+      timestamp: new Date().toISOString()
+    });
+
+    saveEvents(events);
+    render();
+  }
+
+  function undo() {
+    const events = loadEvents();
+    if (!events.length) return;
+
+    events.pop();
+    saveEvents(events);
+    render();
+  }
+
+  function getFallbackSmokingDayStart(now = new Date()) {
+    const fallback = new Date(now);
+    fallback.setHours(5, 0, 0, 0);
+
+    if (now < fallback) {
+      fallback.setDate(fallback.getDate() - 1);
+    }
+
+    return fallback;
+  }
+
+  function getExplicitSmokingDayExpiry(start) {
+    return new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate() + 2,
+      5, 0, 0, 0
+    );
+  }
+
+  function getCurrentSmokingDay(events) {
+    const now = new Date();
+    let startIndex = -1;
+
+    for (let i = events.length - 1; i >= 0; i--) {
+      if (events[i].type === "first-cigarette") {
+        startIndex = i;
+        break;
+      }
+    }
+
+    if (startIndex >= 0) {
+      const explicitStart =
+        new Date(events[startIndex].timestamp);
+
+      const expiry =
+        getExplicitSmokingDayExpiry(explicitStart);
+
+      if (
+        explicitStart <= now &&
+        now < expiry
+      ) {
+        return {
+          start: explicitStart,
+          events: events.slice(startIndex),
+          explicit: true
+        };
+      }
+    }
+
+    const fallback =
+      getFallbackSmokingDayStart(now);
+
+    return {
+      start: fallback,
+      events: events.filter(
+        e => new Date(e.timestamp) >= fallback
+      ),
+      explicit: false
+    };
+  }
+
+  function formatTime(date) {
+    return new Intl.DateTimeFormat("de-DE", {
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date);
+  }
+
+  function formatDuration(ms) {
+    if (!Number.isFinite(ms) || ms < 0) return "–";
+
+    const totalMinutes = Math.floor(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours === 0) return `${minutes} min`;
+    return `${hours}h ${minutes}m`;
+  }
+
+  const SHIFT_ANCHOR = {
+    year: 2026,
+    month: 9,
+    day: 3
+  };
+
+  /*
+    Exakter 28-Tage-Grundzyklus.
+
+    Index 0 = 03.09.2026
+  */
+  const SHIFT_CYCLE = [
+    "nacht", "nacht", "nacht", "nacht",
+    "frei",  "frei",
+    "spaet", "spaet", "spaet", "spaet",
+    "frei",
+    "spaet", "spaet",
+    "frei",
+    "frueh", "frueh", "frueh", "frueh",
+    "nacht", "nacht", "nacht",
+    "frei",  "frei",  "frei",  "frei",
+    "frueh", "frueh", "frueh"
+  ];
+
+  const SHIFT_INFO = {
+    frueh: {
+      name: "Frühschicht",
+      time: "06:00–14:00"
+    },
+
+    frueh12: {
+      name: "12h-Frühschicht",
+      time: "06:00–18:00"
+    },
+
+    spaet: {
+      name: "Spätschicht",
+      time: "14:00–22:00"
+    },
+
+    nacht: {
+      name: "Nachtschicht",
+      time: "22:00–06:00"
+    },
+
+    nacht12: {
+      name: "12h-Nachtschicht",
+      time: "18:00–06:00"
+    },
+
+    frei: {
+      name: "Frei",
+      time: "keine planmäßige Schicht"
+    }
+  };
+
+  function utcDayNumber(date) {
+    return Math.floor(
+      Date.UTC(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+      ) / 86400000
+    );
+  }
+
+  function getBaseShift(date) {
+    const anchor = new Date(
+      SHIFT_ANCHOR.year,
+      SHIFT_ANCHOR.month - 1,
+      SHIFT_ANCHOR.day
+    );
+
+    const diff =
+      utcDayNumber(date) -
+      utcDayNumber(anchor);
+
+    const index =
+      ((diff % 28) + 28) % 28;
+
+    return SHIFT_CYCLE[index];
+  }
+
+  function getShift(date) {
+    const base = getBaseShift(date);
+
+    // Sonntag = JavaScript-Wochentag 0
+    const sunday = date.getDay() === 0;
+
+    if (sunday && base === "frueh") {
+      return "frueh12";
+    }
+
+    if (sunday && base === "nacht") {
+      return "nacht12";
+    }
+
+    return base;
+  }
+
+  function renderShift() {
+    const today = new Date();
+
+    const tomorrow = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() + 1
+    );
+
+    const todayShift = getShift(today);
+    const tomorrowShift = getShift(tomorrow);
+
+    const todayInfo = SHIFT_INFO[todayShift];
+    const tomorrowInfo = SHIFT_INFO[tomorrowShift];
+
+    $("shiftName").textContent =
+      todayInfo.name;
+
+    $("shiftTime").textContent =
+      todayInfo.time;
+
+    $("shiftTomorrow").textContent =
+      "Morgen: " +
+      tomorrowInfo.name +
+      " · " +
+      tomorrowInfo.time;
+  }
+  function render() {
+    renderShift();
+
+    const allEvents = loadEvents();
+
+    const firstMarkers = allEvents
+      .filter(e => e.type === "first-cigarette")
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    if (firstMarkers.length === 0) {
+      $("calibrationTitle").textContent =
+        "KALIBRIERUNG NOCH NICHT GESTARTET";
+
+      $("calibrationText").textContent =
+        "Startet mit der ersten Zigarette nach dem Schlaf.";
+    }
+
+    if (firstMarkers.length > 0) {
+      const calibrationDay = Math.min(firstMarkers.length, 7);
+
+      $("calibrationTitle").textContent =
+        "KALIBRIERUNG - TAG " + calibrationDay + " VON 7";
+
+      $("calibrationText").textContent =
+        calibrationDay < 7
+          ? "Heute normal verhalten und alles vollständig erfassen. Noch kein Tageslimit."
+          : "Siebter erfasster Rauchtag. Danach wird der persönliche Ausgangswert berechnet.";
+    }
+
+    const smokingDay = getCurrentSmokingDay(allEvents);
+    const events = smokingDay.events;
+
+    const cigarettes = events.filter(
+      e => e.type === "cigarette" || e.type === "first-cigarette"
+    );
+
+    const vapes = events.filter(e => e.type === "vape");
+
+    $("today").textContent =
+      new Intl.DateTimeFormat("de-DE", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      }).format(new Date());
+
+    $("cigCount").textContent = cigarettes.length;
+    $("vapeCount").textContent = vapes.length;
+    const explicitStart = [...allEvents]
+      .reverse()
+      .find(e => e.type === "first-cigarette");
+
+    $("dayStart").textContent =
+      explicitStart &&
+      new Date(explicitStart.timestamp) >= smokingDay.start
+        ? formatTime(new Date(explicitStart.timestamp))
+        : "nicht markiert";
+
+    if (cigarettes.length) {
+      const last = new Date(cigarettes[cigarettes.length - 1].timestamp);
+      $("sinceLast").textContent =
+        formatDuration(Date.now() - last.getTime());
+    } else {
+      $("sinceLast").textContent = "–";
+    }
+
+    if (cigarettes.length >= 2) {
+      let total = 0;
+
+      for (let i = 1; i < cigarettes.length; i++) {
+        total +=
+          new Date(cigarettes[i].timestamp) -
+          new Date(cigarettes[i - 1].timestamp);
+      }
+
+      $("avgGap").textContent =
+        formatDuration(total / (cigarettes.length - 1));
+    } else {
+      $("avgGap").textContent = "–";
+    }
+
+    const list = $("eventList");
+    list.innerHTML = "";
+
+    const reversed = [...events].reverse();
+
+    if (!reversed.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "Noch keine Einträge.";
+      list.appendChild(li);
+    } else {
+      reversed.forEach(event => {
+        const li = document.createElement("li");
+
+        const name =
+          event.type === "first-cigarette"
+            ? "🚬 Erste nach Schlaf"
+            : event.type === "cigarette"
+            ? "🚬 Zigarette"
+            : "💨 Dampfer";
+
+        const left = document.createElement("span");
+        left.textContent = name;
+
+        const right = document.createElement("span");
+        right.className = "muted";
+        right.textContent = formatTime(new Date(event.timestamp));
+
+        li.append(left, right);
+        list.appendChild(li);
+      });
+    }
+  }
+
+  function exportData() {
+    const payload = {
+      app: "Rauchfrei",
+      version: "0.6",
+      exportedAt: new Date().toISOString(),
+      events: loadEvents()
+    };
+
+    const blob = new Blob(
+      [JSON.stringify(payload, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    const stamp = new Date()
+      .toISOString()
+      .slice(0, 10);
+
+    a.href = url;
+    a.download = `rauchfrei-backup-${stamp}.json`;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function resetData() {
+    const ok = confirm(
+      "Wirklich ALLE bisher gespeicherten Rauchfrei-Daten löschen?"
+    );
+
+    if (!ok) return;
+
+    localStorage.removeItem(STORAGE_KEY);
+    render();
+  }
+  $("firstBtn").addEventListener("click", () =>
+    addEvent("first-cigarette")
+  );
+
+  $("cigBtn").addEventListener("click", () =>
+    addEvent("cigarette")
+  );
+
+  $("vapeBtn").addEventListener("click", () =>
+    addEvent("vape")
+  );
+
+  $("undoBtn").addEventListener("click", undo);
+  $("exportBtn").addEventListener("click", exportData);
+  $("importBtn").addEventListener("click", () => {
+    $("importFile").value = "";
+    $("importFile").click();
+  });
+
+  $("importFile").addEventListener("change", async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (
+        !data ||
+        data.app !== "Rauchfrei" ||
+        !Array.isArray(data.events)
+      ) {
+        alert("Ungültiges Rauchfrei-Backup.");
+        return;
+      }
+
+      const allowedTypes = [
+        "first-cigarette",
+        "cigarette",
+        "vape"
+      ];
+
+      const valid = data.events.every(e =>
+        e &&
+        allowedTypes.includes(e.type) &&
+        typeof e.timestamp === "string" &&
+        !Number.isNaN(new Date(e.timestamp).getTime())
+      );
+
+      if (!valid) {
+        alert("Backup enthält ungültige Ereignisse.");
+        return;
+      }
+
+      const ok = confirm(
+        "Backup importieren?\n\nDie aktuell gespeicherten Daten werden vorher automatisch exportiert."
+      );
+
+      if (!ok) return;
+
+      exportData();
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(data.events)
+      );
+
+      render();
+
+      alert(
+        "Backup erfolgreich importiert: " +
+        data.events.length +
+        " Ereignisse."
+      );
+    } catch (error) {
+      alert("Backup konnte nicht gelesen werden.");
+    }
+  });
+
+  $("resetBtn").addEventListener("click", resetData);
+
+  render();
+  setInterval(render, 30000);
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
