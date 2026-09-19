@@ -1,6 +1,9 @@
 ﻿<!doctype html>
 <html lang="de">
 <head>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111827">
@@ -629,7 +632,7 @@
   function exportData() {
     const payload = {
       app: "Rauchfrei",
-      version: "0.6",
+      version: "0.8",
       exportedAt: new Date().toISOString(),
       events: loadEvents()
     };
@@ -751,8 +754,18 @@
   setInterval(render, 30000);
 })();
 </script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("./service-worker.js")
+      .catch(error => console.error("Service Worker:", error));
+  });
+}
+</script>
 </body>
 </html>
+
 
 
 
