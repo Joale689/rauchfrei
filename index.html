@@ -272,17 +272,20 @@
     const events = loadEvents();
 
     if (type === "first-cigarette") {
-      const smokingDay = getCurrentSmokingDay(events);
+      const lastFirst = [...events]
+        .reverse()
+        .find(e => e.type === "first-cigarette");
 
-      const alreadyMarked = smokingDay.events.some(
-        e => e.type === "first-cigarette"
-      );
+      if (lastFirst) {
+        const minutesSinceLastFirst =
+          (Date.now() - new Date(lastFirst.timestamp).getTime()) / 60000;
 
-      if (alreadyMarked) {
-        alert(
-          "Die erste Zigarette nach dem Schlaf ist für diesen Rauchtag bereits markiert."
-        );
-        return;
+        if (minutesSinceLastFirst < 10) {
+          alert(
+            "Die erste Zigarette nach dem Schlaf wurde gerade bereits eingetragen."
+          );
+          return;
+        }
       }
     }
 
@@ -765,6 +768,7 @@ if ("serviceWorker" in navigator) {
 </script>
 </body>
 </html>
+
 
 
 
