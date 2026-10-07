@@ -1,0 +1,23 @@
+process.env.TZ='Europe/Berlin';
+const assert=require('node:assert/strict');
+const c=require('./rauchfrei-v1.0.0.js');let passed=0;
+function test(name,fn){fn();passed++;console.log('OK '+name);}
+const now=new Date('2026-10-07T12:00:00+02:00');
+const storage=()=>{const m=new Map();return {getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>m.set(k,v)};};
+const event=(timestamp,id='a',type='cigarette')=>({id,type,timestamp:new Date(timestamp).toISOString()});
+test('18 bis 0, richtige Stufen und Zieltag',()=>{const p=c.fresh().plan;assert.equal(c.limit(p,'2026-10-06'),null);assert.equal(c.limit(p,'2026-10-07'),18);assert.equal(c.limit(p,'2026-10-08'),18);assert.equal(c.limit(p,'2026-10-09'),17);assert.equal(c.limit(p,'2026-10-15'),14);assert.equal(c.limit(p,'2026-11-11'),1);assert.equal(c.limit(p,'2026-11-12'),0);assert.equal(c.limit(p,'2027-01-01'),0);});
+test('Alle Rhythmen monoton und null erst am Ziel',()=>{for(const step of [1,2,3,7]){const p={...c.fresh().plan,step};let prev=18;for(let n=c.dayNumber(p.start);n<c.dayNumber(p.quit);n++){const k=new Date(n*86400000).toISOString().slice(0,10),v=c.limit(p,k);assert(v<=prev&&v>0);prev=v;}assert.equal(c.limit(p,p.quit),0);}});
+test('05 Uhr ohne erste Zigarette',()=>{assert.equal(c.dayKey(new Date('2026-10-08T04:59:00+02:00')),'2026-10-07');assert.equal(c.dayKey(new Date('2026-10-08T05:00:00+02:00')),'2026-10-08');});
+test('Winterzeit veraendert keinen Plantag',()=>{assert.equal(c.dayKey(new Date('2026-10-25T02:30:00+02:00')),'2026-10-24');assert.equal(c.dayKey(new Date('2026-10-25T02:30:00+01:00')),'2026-10-24');assert.equal(c.dayKey(new Date('2026-10-25T05:00:00+01:00')),'2026-10-25');});
+test('Ungueltige Daten und Intervalle abgelehnt',()=>{assert.throws(()=>c.dayNumber('2026-02-30'));assert.throws(()=>c.limit({...c.fresh().plan,step:0},'2026-10-07'));});
+test('Migration veraendert alte Eintraege nicht',()=>{const st=storage(),events=[event('2026-09-20T04:42:00+02:00','a','first-cigarette')],raw=JSON.stringify(events);st.setItem(c.OLD,raw);const r=c.read(st,now);assert.deepEqual(r.state.events,events);assert.equal(st.getItem(c.KEY),null);c.write(st,null,r.state,now);assert.equal(st.getItem(c.OLD),raw);});
+test('Defekter Altspeicher bleibt unangetastet',()=>{const st=storage();st.setItem(c.OLD,'kaputt');assert.throws(()=>c.read(st,now));assert.equal(st.getItem(c.OLD),'kaputt');assert.equal(st.getItem(c.KEY),null);});
+test('Konflikt verhindert Ueberschreiben',()=>{const st=storage(),r=c.read(st,now);st.setItem(c.KEY,'anderer Stand');assert.throws(()=>c.write(st,r.raw,r.state,now));assert.equal(st.getItem(c.KEY),'anderer Stand');});
+test('Speicherfehler veraendert Daten nicht',()=>{const st=storage();c.write(st,null,c.fresh(),now);const raw=st.getItem(c.KEY);st.setItem=()=>{throw Error('voll');};assert.throws(()=>c.write(st,raw,c.fresh(),now));assert.equal(st.getItem(c.KEY),raw);});
+test('Keine automatischen Nulltage',()=>{assert.deepEqual(c.fresh().confirmed,[]);const s=c.fresh();s.confirmed=['2026-10-07'];assert.throws(()=>c.validate(s,now));s.confirmed=['2026-10-06'];c.validate(s,now);});
+test('Import prueft Duplikate, Zukunft, Schema und Zeitzone',()=>{for(const change of [s=>s.events=[event('2026-10-07T09:00:00Z'),event('2026-10-07T09:00:00Z')],s=>s.events=[event('2030-01-01T00:00:00Z')],s=>s.schema=3,s=>s.timezone='Andere']){const s=c.fresh();change(s);assert.throws(()=>c.validate(s,now));}assert.throws(()=>c.imported({app:'Rauchfrei',version:'0.8'},now));});
+test('Export und Import erhalten Einstellungen',()=>{const s=c.fresh();s.phase=2;s.nicotine=5;s.confirmed=['2026-10-06'];assert.deepEqual(c.imported(JSON.parse(JSON.stringify({app:'Rauchfrei',version:'1.0.0',state:s})),now),s);});
+test('Uhrzeitkorrektur erhaelt unveraenderte Sekunden',()=>{const s=c.fresh([event('2026-10-07T10:12:34.567+02:00')]);const before=s.events[0].timestamp;c.editEvent(s,'a','2026-10-07T10:12',now);assert.equal(s.events[0].timestamp,before);});
+test('Korrektur entfernt beide Tagesbestaetigungen',()=>{const s=c.fresh([event('2026-10-05T12:00:00+02:00')]);s.confirmed=['2026-10-05','2026-10-06'];c.editEvent(s,'a','2026-10-06T12:00',now);assert.deepEqual(s.confirmed,[]);});
+test('Sommerzeitluecke und neue doppelte Herbstminute abgelehnt',()=>{const s=c.fresh([event('2026-03-01T12:00:00+01:00')]);assert.throws(()=>c.editEvent(s,'a','2026-03-29T02:30',new Date('2026-12-01')));assert.throws(()=>c.editEvent(s,'a','2026-10-25T02:30',new Date('2026-12-01')));});
+console.log('RESULTAT: GREEN - '+passed+' Logiktests bestanden.');
